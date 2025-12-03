@@ -6,6 +6,10 @@
 FROM python:3.10-slim
 
 ENV PYTHONUNBUFFERED True
+ENV PORT 8080
+ENV TRANSFORMERS_CACHE /mnt/bertcache
+ENV HF_HOME /mnt/bertcache
+ENV TORCH_HOME /mnt/bertcache
 
 # Copy local code to the container image.
 ENV APP_HOME /app
@@ -24,6 +28,9 @@ COPY . ./
 #RUN pip install -r requirements.txt
 RUN pip install -U flask-cors
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Download BERT model during build to avoid runtime delays (commented out due to AMD64 build compatibility issues)
+# RUN python -c "from transformers import BertTokenizer, BertModel; BertTokenizer.from_pretrained('bert-base-uncased'); BertModel.from_pretrained('bert-base-uncased')"
 
 CMD exec gunicorn --bind :$PORT --workers 1 --threads 8 --timeout 0 main:app
 #ENTRYPOINT ["python", "main.py"]
