@@ -1,0 +1,86 @@
+name: Deploy to Azure Container Apps
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:  # Allows manual trigger from GitHub UI
+
+env:
+  AZURE_RG: vqa-rg
+  AZURE_REGISTRY: vqaregistry
+  AZURE_CONTAINER_APP: vqa-backend
+  IMAGE_NAME: vqa-backend
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+    
+    - name: Get latest version from ACR
+      id: get-version
+      run: |
+        # Get all tags from ACR and find the latest version number
+        TAGS=$(az acr repository show-tags --name ${{ env.AZURE_REGISTRY }} --repository ${{ env.IMAGE_NAME }} --orderby time_desc --output json 2>/dev/null || echo '[]')
+        
+        LATEST_VERSION=0
+        for tag in $(echo "$TAGS" | jq -r '.[]'); do
+          if [[ $tag =~ ^v([0-9]+)$ ]]; then
+            VERSION_NUM=${BASH_REMATCH[1]}
+            if [ $VERSION_NUM -gt $LATEST_VERSION ]; then
+              LATEST_VERSION=$VERSION_NUM
+            fi
+          fi
+        done
+        
+        NEW_VERSION=$((LATEST_VERSION + 1))
+        VERSION_TAG="v$NEW_VERSION"
+        
+        echo "Current version: v$LATEST_VERSION"
+        echo "New version: $VERSION_TAG"
+        echo "version=$VERSION_TAG" >> $GITHUB_OUTPUT
+    
+    - name: Build image in ACR
+      run: |
+        az acr build \
+          --registry ${{ env.AZURE_REGISTRY }} \
+          --image ${{ env.IMAGE_NAME }}:${{ steps.get-version.outputs.version }} \
+          --platform linux/amd64 \
+          --file Dockerfile \
+          .
+    
+    - name: Update Container App
+      run: |
+        az containerapp update \
+          --name ${{ env.AZURE_CONTAINER_APP }} \
+          --resource-group ${{ env.AZURE_RG }} \
+          --image ${{ env.AZURE_REGISTRY }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ steps.get-version.outputs.version }}
+    
+    - name: Get Container App URL
+      id: get-url
+      run: |
+        URL=$(az containerapp show \
+          --name ${{ env.AZURE_CONTAINER_APP }} \
+          --resource-group ${{ env.AZURE_RG }} \
+          --query "properties.configuration.ingress.fqdn" \
+          -o tsv)
+        echo "url=https://$URL" >> $GITHUB_OUTPUT
+    
+    - name: Deployment Summary
+      run: |
+        echo "### Deployment Successful! 🚀" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Version:** ${{ steps.get-version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Image:** ${{ env.AZURE_REGISTRY }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ steps.get-version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+        echo "**URL:** ${{ steps.get-url.outputs.url }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Resource Group:** ${{ env.AZURE_RG }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Container App:** ${{ env.AZURE_CONTAINER_APP }}" >> $GITHUB_STEP_SUMMARY
