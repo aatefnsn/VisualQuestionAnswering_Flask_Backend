@@ -4,9 +4,19 @@ from six.moves import cPickle as pickle
 from torch_utils import transform_image, get_prediction, transform_question_BERT#, transform_question, transform_question_two
 from PIL import Image
 from flask_cors import CORS
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 app = Flask(__name__)
 CORS(app)
+
+# Rate limiting: 100 requests per day per IP address
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    default_limits=["100 per day"],
+    storage_uri="memory://"
+)
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 def allowed_file(filename):
