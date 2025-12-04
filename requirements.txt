@@ -1,4 +1,5 @@
 Flask==2.1.2
+Flask-Limiter==3.5.0
 gunicorn==20.1.0
 #heroku==0.1.4
 tokenizers==0.13.2
