@@ -22,6 +22,14 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+@app.route('/health', methods=['GET'])
+def health_check():
+    """Health check endpoint for deployment monitoring"""
+    return jsonify({
+        'status': 'healthy',
+        'service': 'vqa-backend'
+    }), 200
+
 @app.route('/predict', methods=['POST'])
 def predict():
     if request.method == 'POST':

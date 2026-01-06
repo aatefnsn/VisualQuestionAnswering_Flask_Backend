@@ -68,63 +68,10 @@ Write-Host "All providers ready!" -ForegroundColor Green
 
 # ============================================
 # PART 1: ONE-TIME INFRASTRUCTURE SETUP
-# (Skip if already exists)
+# (Skip if already exists - SKIPPED FOR THIS RUN)
 # ============================================
 
-Write-Host "`n[1/8] Creating storage account..." -ForegroundColor Yellow
-$storageExists = $null
-try {
-    $storageExists = az storage account show --name $STORAGE --resource-group $RG --query "name" -o tsv 2>&1
-} catch {}
-if ($LASTEXITCODE -eq 0 -and $storageExists -and $storageExists -notlike "*ERROR*") {
-    Write-Host "Storage account already exists, skipping creation." -ForegroundColor Green
-} else {
-    Write-Host "Creating storage account $STORAGE..." -ForegroundColor Yellow
-    az storage account create --name $STORAGE --resource-group $RG --location $LOCATION --sku Standard_LRS
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "ERROR: Failed to create storage account!" -ForegroundColor Red
-        exit 1
-    }
-    Write-Host "Storage account created successfully." -ForegroundColor Green
-}
-
-Write-Host "[2/8] Creating file share for BERT cache..." -ForegroundColor Yellow
-$shareExists = $null
-try {
-    $shareExists = az storage share exists --name bertcache --account-name $STORAGE --query "exists" -o tsv 2>&1
-} catch {}
-if ($LASTEXITCODE -eq 0 -and $shareExists -eq "true") {
-    Write-Host "File share already exists, skipping creation." -ForegroundColor Green
-} else {
-    Write-Host "Creating file share bertcache..." -ForegroundColor Yellow
-    az storage share create --name bertcache --account-name $STORAGE
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "ERROR: Failed to create file share!" -ForegroundColor Red
-        exit 1
-    }
-    Write-Host "File share created successfully." -ForegroundColor Green
-}
-
-Write-Host "[3/8] Retrieving storage key..." -ForegroundColor Yellow
-$KEY = az storage account keys list --resource-group $RG --account-name $STORAGE --query "[0].value" -o tsv
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "ERROR: Failed to retrieve storage key!" -ForegroundColor Red
-    exit 1
-}
-
-Write-Host "[4/8] Registering storage with Container Apps environment..." -ForegroundColor Yellow
-az containerapp env storage set `
-  --name $ENV `
-  --resource-group $RG `
-  --storage-name bertcache `
-  --azure-file-account-name $STORAGE `
-  --azure-file-account-key $KEY `
-  --azure-file-share-name bertcache `
-  --access-mode ReadWrite
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "ERROR: Failed to register storage with environment!" -ForegroundColor Red
-    exit 1
-}
+Write-Host "`n[1-4/8] Skipping storage setup (already configured)..." -ForegroundColor Yellow
 
 # ============================================
 # PART 2: BUILD AND DEPLOY APPLICATION
