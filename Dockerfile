@@ -16,21 +16,16 @@ ENV APP_HOME /app
 WORKDIR $APP_HOME
 COPY . ./
 
-
-#ADD . /app
-#WORKDIR /app
-
-#RUN set -xe \
-#    && apt-get -y update \
-#    && apt-get -y install python3-pip
-#RUN pip install --upgrade pip
-
-#RUN pip install -r requirements.txt
+# Install dependencies first (for better layer caching)
 RUN pip install -U flask-cors
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Download BERT model during build to avoid runtime delays (commented out due to AMD64 build compatibility issues)
-# RUN python -c "from transformers import BertTokenizer, BertModel; BertTokenizer.from_pretrained('bert-base-uncased'); BertModel.from_pretrained('bert-base-uncased')"
+# Download the trained model checkpoint from Azure Blob Storage during build
+RUN mkdir -p app && \
+    apt-get update && apt-get install -y --no-install-recommends curl && \
+    curl -o app/checkpoint_17_Ahmed_768_new.pth.tar \
+    "https://vqastorage6305.blob.core.windows.net/models/checkpoint_17_Ahmed_768_new.pth.tar" && \
+    apt-get remove -y curl && apt-get autoremove -y && \
+    echo "Model checkpoint downloaded successfully"
 
 CMD exec gunicorn --bind :$PORT --workers 1 --threads 8 --timeout 0 main:app
-#ENTRYPOINT ["python", "main.py"]
