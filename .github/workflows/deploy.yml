@@ -20,6 +20,11 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
     
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y jq
+    
     - name: Azure Login
       uses: azure/login@v1
       with:
@@ -28,6 +33,7 @@ jobs:
     - name: Get latest version from ACR
       id: get-version
       run: |
+        set -e
         # Get all tags from ACR and find the latest version number
         TAGS=$(az acr repository show-tags --name ${{ env.AZURE_REGISTRY }} --repository ${{ env.IMAGE_NAME }} --orderby time_desc --output json 2>/dev/null || echo '[]')
         
@@ -48,8 +54,16 @@ jobs:
         echo "New version: $VERSION_TAG"
         echo "version=$VERSION_TAG" >> $GITHUB_OUTPUT
     
+    - name: Validate Dockerfile exists
+      run: |
+        if [ ! -f Dockerfile ]; then
+          echo "Error: Dockerfile not found in repository root"
+          exit 1
+        fi
+    
     - name: Build image in ACR
       run: |
+        set -e
         az acr build \
           --registry ${{ env.AZURE_REGISTRY }} \
           --image ${{ env.IMAGE_NAME }}:${{ steps.get-version.outputs.version }} \
@@ -59,6 +73,7 @@ jobs:
     
     - name: Update Container App
       run: |
+        set -e
         az containerapp update \
           --name ${{ env.AZURE_CONTAINER_APP }} \
           --resource-group ${{ env.AZURE_RG }} \
@@ -67,6 +82,7 @@ jobs:
     - name: Get Container App URL
       id: get-url
       run: |
+        set -e
         URL=$(az containerapp show \
           --name ${{ env.AZURE_CONTAINER_APP }} \
           --resource-group ${{ env.AZURE_RG }} \
