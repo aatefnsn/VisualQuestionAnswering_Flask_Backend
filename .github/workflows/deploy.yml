@@ -11,6 +11,9 @@ env:
   AZURE_REGISTRY: vqaregistry
   AZURE_CONTAINER_APP: vqa-backend
   IMAGE_NAME: vqa-backend
+  AZURE_STORAGE_ACCOUNT: ${{ secrets.AZURE_STORAGE_ACCOUNT }}
+  AZURE_CONTAINER_NAME: ${{ secrets.AZURE_CONTAINER_NAME }}
+  MODEL_BLOB_NAME: ${{ secrets.MODEL_BLOB_NAME }}
 
 jobs:
   build-and-deploy:
@@ -63,12 +66,39 @@ jobs:
           exit 1
         fi
     
-    - name: Build image in ACR
+    - name: Download model from Azure Blob Storage
       env:
         SAS_TOKEN: ${{ secrets.AZURE_SAS_TOKEN }}
+        STORAGE_ACCOUNT: ${{ secrets.AZURE_STORAGE_ACCOUNT }}
+        CONTAINER_NAME: ${{ secrets.AZURE_CONTAINER_NAME }}
+        MODEL_BLOB: ${{ secrets.MODEL_BLOB_NAME }}
+      run: |
+        echo "Downloading model from Azure Blob Storage..."
+        SAS_URL="https://${STORAGE_ACCOUNT}.blob.core.windows.net/${CONTAINER_NAME}/${MODEL_BLOB}${SAS_TOKEN}"
+        
+        curl -f --max-time 3600 "$SAS_URL" -o checkpoint_17_Ahmed_768_new.pth.tar
+        
+        # Verify file size
+        FILE_SIZE=$(stat -c%s checkpoint_17_Ahmed_768_new.pth.tar 2>/dev/null || stat -f%z checkpoint_17_Ahmed_768_new.pth.tar)
+        FILE_SIZE_MB=$((FILE_SIZE / 1024 / 1024))
+        echo "Downloaded file size: ${FILE_SIZE_MB} MB"
+        
+        if [ $FILE_SIZE -lt 500000000 ]; then
+          echo "ERROR: Model file too small (${FILE_SIZE_MB} MB), download may have failed"
+          exit 1
+        fi
+        
+        echo "✓ Model downloaded successfully"
+    
+    - name: Build image in ACR
       run: |
         echo "Building Docker image in Azure Container Registry..."
-        az acr build --registry vqaregistry --image vqa-backend:${{ steps.get-version.outputs.version }} --platform linux/amd64 --file Dockerfile --build-arg AZURE_SAS_TOKEN="$SAS_TOKEN" ./
+        az acr build \
+          --registry vqaregistry \
+          --image vqa-backend:${{ steps.get-version.outputs.version }} \
+          --platform linux/amd64 \
+          --file Dockerfile \
+          ./
     
     - name: Store previous version
       id: store-previous
@@ -175,6 +205,11 @@ jobs:
           exit 1
         fi
     
+    - name: Wait for container stabilization
+      run: |
+        echo "Waiting for container to stabilize..."
+        sleep 5
+    
     - name: Rollback on failure
       if: failure() && steps.store-previous.outputs.previous_image != ''
       run: |
@@ -233,12 +268,38 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
+        pip install pytest requests pillow
+    
+    - name: Get deployed container URL
+      id: get-deployed-url
+      run: |
+        # Install Azure CLI
+        curl -sL https://aka.ms/InstallAzureCLIDeb | bash
+        
+        # Login
+        az login --service-principal -u ${{ secrets.AZURE_CLIENT_ID }} -p ${{ secrets.AZURE_CLIENT_SECRET }} --tenant ${{ secrets.AZURE_TENANT_ID }}
+        
+        # Get container URL
+        URL=$(az containerapp show \
+          --name vqa-backend \
+          --resource-group vqa-rg \
+          --query "properties.configuration.ingress.fqdn" \
+          -o tsv)
+        
+        echo "container_url=https://$URL" >> $GITHUB_OUTPUT
     
     - name: Run unit tests
       run: |
         echo "Running unit tests..."
         python -m pytest test_backend.py -v --tb=short || python -m unittest test_backend.py -v
     
+    - name: Run integration tests
+      env:
+        CONTAINER_URL: ${{ steps.get-deployed-url.outputs.container_url }}
+      run: |
+        echo "Running integration tests against deployed container..."
+        python -m pytest test_integration.py -v --tb=short -s
+    
     - name: Test results summary
       if: always()
-      run: echo "✓ Unit tests completed"
+      run: echo "✓ Unit and integration tests completed"
