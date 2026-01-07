@@ -16,16 +16,41 @@ ENV TORCH_HOME /mnt/bertcache
 # Copy local code to the container image.
 ENV APP_HOME /app
 WORKDIR $APP_HOME
+
+RUN echo "=== Starting Docker build ===" && \
+    echo "AZURE_SAS_TOKEN length: ${#AZURE_SAS_TOKEN}" && \
+    echo "APP_HOME: $APP_HOME" && \
+    echo "PWD: $(pwd)" && \
+    echo "Listing build context files:" && \
+    ls -la /
+
 COPY . ./
 
+RUN echo "=== After COPY ===" && \
+    ls -la . && \
+    echo "Files copied successfully"
+
 # Install dependencies first (for better layer caching)
-RUN pip install -U flask-cors
-RUN pip install --no-cache-dir -r requirements.txt
+RUN echo "=== Installing flask-cors ===" && \
+    pip install -U flask-cors
+
+RUN echo "=== Installing requirements ===" && \
+    pip install --no-cache-dir -r requirements.txt
 
 # Install curl for model download
-RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+RUN echo "=== Installing curl ===" && \
+    apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 
 # Download model checkpoint from Azure using the script
-RUN chmod +x download_model.sh && AZURE_SAS_TOKEN="$AZURE_SAS_TOKEN" ./download_model.sh
+RUN echo "=== Preparing download script ===" && \
+    echo "Script exists: $([ -f download_model.sh ] && echo 'YES' || echo 'NO')" && \
+    echo "Script content:" && \
+    head -5 download_model.sh && \
+    echo "Making script executable..." && \
+    chmod +x download_model.sh && \
+    echo "=== Running download script ===" && \
+    env | grep AZURE_SAS_TOKEN && \
+    ./download_model.sh && \
+    echo "=== Download script completed ==="
 
 CMD exec gunicorn --bind :$PORT --workers 1 --threads 8 --timeout 0 main:app
