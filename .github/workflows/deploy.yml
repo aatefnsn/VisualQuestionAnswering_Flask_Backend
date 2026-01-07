@@ -71,6 +71,7 @@ jobs:
           --image ${{ env.IMAGE_NAME }}:${{ steps.get-version.outputs.version }} \
           --platform linux/amd64 \
           --file Dockerfile \
+          --build-arg AZURE_SAS_TOKEN="${{ secrets.AZURE_SAS_TOKEN }}" \
           .
     
     - name: Store previous version
