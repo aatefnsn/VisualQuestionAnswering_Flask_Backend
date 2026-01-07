@@ -30,17 +30,22 @@ RUN mkdir -p app && \
     echo "Downloading model checkpoint from Azure..." && \
     echo "========================================" && \
     MODEL_URL="https://vqastorage6305.blob.core.windows.net/models/checkpoint_17_Ahmed_768_new.pth.tar" && \
-    curl -f -L --max-time 600 --retry 3 --retry-delay 5 \
+    echo "URL: $MODEL_URL" && \
+    curl -v -L --max-time 600 --retry 5 --retry-delay 10 \
     -o app/checkpoint_17_Ahmed_768_new.pth.tar \
-    "$MODEL_URL" && \
+    "$MODEL_URL" || (echo "Curl failed with exit code: $?"; exit 1) && \
+    echo "Checking downloaded file..." && \
     if [ ! -f app/checkpoint_17_Ahmed_768_new.pth.tar ]; then \
-        echo "ERROR: Model download failed - file not found"; \
+        echo "ERROR: Model file not found after download"; \
         exit 1; \
     fi && \
-    MODEL_SIZE=$(stat -c%s app/checkpoint_17_Ahmed_768_new.pth.tar) && \
-    echo "Downloaded model size: $((MODEL_SIZE / 1048576)) MB" && \
-    if [ $MODEL_SIZE -lt 500000000 ]; then \
-        echo "ERROR: Model file too small ($MODEL_SIZE bytes), download likely incomplete"; \
+    MODEL_SIZE=$(stat -c%s app/checkpoint_17_Ahmed_768_new.pth.tar 2>/dev/null || echo 0) && \
+    echo "Downloaded file size: $MODEL_SIZE bytes ($((MODEL_SIZE / 1048576)) MB)" && \
+    if [ "$MODEL_SIZE" -lt 500000000 ]; then \
+        echo "ERROR: Downloaded file is only $MODEL_SIZE bytes (< 500MB)"; \
+        echo "File contents (first 500 bytes):"; \
+        head -c 500 app/checkpoint_17_Ahmed_768_new.pth.tar || true; \
+        echo ""; \
         exit 1; \
     fi && \
     echo "✓ Model checkpoint downloaded successfully!" && \
