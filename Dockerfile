@@ -23,19 +23,25 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Download the trained model checkpoint from Azure Blob Storage during build
 RUN mkdir -p app && \
     apt-get update && apt-get install -y --no-install-recommends curl && \
+    echo "========================================" && \
     echo "Downloading model checkpoint..." && \
-    curl -f -L -o app/checkpoint_17_Ahmed_768_new.pth.tar \
-    "https://vqastorage6305.blob.core.windows.net/models/checkpoint_17_Ahmed_768_new.pth.tar" && \
+    echo "========================================" && \
+    MODEL_URL="https://vqastorage6305.blob.core.windows.net/models/checkpoint_17_Ahmed_768_new.pth.tar" && \
+    curl -f -L --max-time 600 --retry 3 --retry-delay 5 \
+    -o app/checkpoint_17_Ahmed_768_new.pth.tar \
+    "$MODEL_URL" && \
     if [ ! -f app/checkpoint_17_Ahmed_768_new.pth.tar ]; then \
         echo "ERROR: Model download failed - file not found"; \
         exit 1; \
     fi && \
     MODEL_SIZE=$(stat -c%s app/checkpoint_17_Ahmed_768_new.pth.tar) && \
+    echo "Downloaded model size: $((MODEL_SIZE / 1048576)) MB" && \
     if [ $MODEL_SIZE -lt 500000000 ]; then \
         echo "ERROR: Model file too small ($MODEL_SIZE bytes), download likely incomplete"; \
         exit 1; \
     fi && \
-    echo "Model checkpoint downloaded successfully ($(($MODEL_SIZE / 1048576)) MB)" && \
+    echo "✓ Model checkpoint downloaded successfully!" && \
+    echo "========================================" && \
     apt-get remove -y curl && apt-get autoremove -y
 
 CMD exec gunicorn --bind :$PORT --workers 1 --threads 8 --timeout 0 main:app
