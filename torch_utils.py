@@ -376,21 +376,18 @@ def _load_model():
     print('Loading the model checkpoint...')
     print(f'Model path: {PATH}')
     print(f'Current working directory: {os.getcwd()}')
-    print(f'Model file exists: {os.path.exists(PATH)}')
     
     try:
         if not os.path.exists(PATH):
             raise FileNotFoundError(f"Model checkpoint not found at {PATH}. "
-                                  f"This should have been downloaded during Docker build from Azure Blob Storage.")
+                                  f"It should have been downloaded during Docker build.")
         
         file_size = os.path.getsize(PATH)
         print(f'Model file size: {file_size / (1024**2):.2f} MB')
         
         if file_size < 500000000:  # Less than 500MB
             raise ValueError(f"Model file is too small ({file_size} bytes). "
-                           f"This likely means the download from Azure Blob Storage failed. "
-                           f"The file may be a Git LFS pointer or corrupted. "
-                           f"Check Docker build logs for download errors.")
+                           f"The download from Azure Blob Storage likely failed during Docker build.")
         
         print('Loading model state dictionary...')
         _model.load_state_dict(torch.load(PATH, map_location='cpu'))

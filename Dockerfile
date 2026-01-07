@@ -22,11 +22,10 @@ COPY . ./
 RUN pip install -U flask-cors
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Download the trained model checkpoint from Azure Blob Storage during build
-RUN mkdir -p app && rm -f app/checkpoint_17_Ahmed_768_new.pth.tar
+# Install curl for model download
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 
-RUN apt-get update && apt-get install -y --no-install-recommends curl
-
-RUN /bin/bash -c 'if [ -n "$AZURE_SAS_TOKEN" ]; then echo "Downloading model..."; curl -L --max-time 600 --retry 5 --retry-delay 10 -o app/checkpoint_17_Ahmed_768_new.pth.tar "https://vqastorage6305.blob.core.windows.net/models/checkpoint_17_Ahmed_768_new.pth.tar?${AZURE_SAS_TOKEN}"; SIZE=$(stat -c%s app/checkpoint_17_Ahmed_768_new.pth.tar); echo "File size: $SIZE bytes"; if [ "$SIZE" -lt 500000000 ]; then echo "ERROR: Too small"; exit 1; fi; echo "✓ Done"; else echo "No SAS token provided"; fi'
+# Download model checkpoint from Azure using the script
+RUN chmod +x download_model.sh && ./download_model.sh "$AZURE_SAS_TOKEN"
 
 CMD exec gunicorn --bind :$PORT --workers 1 --threads 8 --timeout 0 main:app
