@@ -67,10 +67,8 @@ jobs:
       env:
         SAS_TOKEN: ${{ secrets.AZURE_SAS_TOKEN }}
       run: |
-        echo "=== Build Command Debug ==="
-        echo "SAS_TOKEN length: ${#SAS_TOKEN}"
-        echo "Building from GitHub repository..."
-        az acr build --registry vqaregistry --image vqa-backend:${{ steps.get-version.outputs.version }} --platform linux/amd64 --file Dockerfile --build-arg AZURE_SAS_TOKEN="$SAS_TOKEN" https://github.com/aatefnsn/VisualQuestionAnswering_Flask_Backend.git#main
+        echo "Building Docker image in Azure Container Registry..."
+        az acr build --registry vqaregistry --image vqa-backend:${{ steps.get-version.outputs.version }} --platform linux/amd64 --file Dockerfile --build-arg AZURE_SAS_TOKEN="$SAS_TOKEN" ./
     
     - name: Store previous version
       id: store-previous
