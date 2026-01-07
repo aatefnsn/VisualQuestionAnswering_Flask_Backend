@@ -23,34 +23,19 @@ RUN pip install -U flask-cors
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Download the trained model checkpoint from Azure Blob Storage during build
-# Note: We remove any local copy first (which may be a Git LFS pointer from GitHub Actions)
-# and download a fresh copy from Azure Blob Storage to ensure integrity
-# The AZURE_SAS_TOKEN is a build argument containing the SAS token for authentication
-RUN mkdir -p app && \
-    rm -f app/checkpoint_17_Ahmed_768_new.pth.tar && \
-    apt-get update && apt-get install -y --no-install-recommends curl && \
-    echo "========================================" && \
+RUN mkdir -p app && rm -f app/checkpoint_17_Ahmed_768_new.pth.tar
+RUN apt-get update && apt-get install -y --no-install-recommends curl
+
+RUN echo "========================================" && \
     echo "Downloading model checkpoint from Azure..." && \
     echo "========================================" && \
     MODEL_URL="https://vqastorage6305.blob.core.windows.net/models/checkpoint_17_Ahmed_768_new.pth.tar" && \
     echo "URL: $MODEL_URL" && \
-    curl -v -L --max-time 600 --retry 5 --retry-delay 10 \
-    -o app/checkpoint_17_Ahmed_768_new.pth.tar \
-    "${MODEL_URL}?${AZURE_SAS_TOKEN}" && \
-    echo "Checking downloaded file..." && \
-    if [ ! -f app/checkpoint_17_Ahmed_768_new.pth.tar ]; then \
-        echo "ERROR: Model file not found after download"; \
-        exit 1; \
-    fi && \
+    curl -v -L --max-time 600 --retry 5 --retry-delay 10 -o app/checkpoint_17_Ahmed_768_new.pth.tar "${MODEL_URL}?${AZURE_SAS_TOKEN}" && \
+    if [ ! -f app/checkpoint_17_Ahmed_768_new.pth.tar ]; then echo "ERROR: Model file not found"; exit 1; fi && \
     MODEL_SIZE=$(stat -c%s app/checkpoint_17_Ahmed_768_new.pth.tar 2>/dev/null || echo 0) && \
     echo "Downloaded file size: $MODEL_SIZE bytes ($((MODEL_SIZE / 1048576)) MB)" && \
-    if [ "$MODEL_SIZE" -lt 500000000 ]; then \
-        echo "ERROR: Downloaded file is only $MODEL_SIZE bytes (< 500MB)"; \
-        echo "File contents (first 500 bytes):"; \
-        head -c 500 app/checkpoint_17_Ahmed_768_new.pth.tar || true; \
-        echo ""; \
-        exit 1; \
-    fi && \
+    if [ "$MODEL_SIZE" -lt 500000000 ]; then echo "ERROR: File is only $MODEL_SIZE bytes"; exit 1; fi && \
     echo "✓ Model checkpoint downloaded successfully!" && \
     echo "========================================"
 
