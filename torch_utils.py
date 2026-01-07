@@ -355,45 +355,62 @@ import os
 PATH = "app/checkpoint_17_Ahmed_768_new.pth.tar"
 #PATH = "app/checkpoint_26_Ahmed_768_new_XLMBERTa.pth.tar"
 
-print('Initializing VQA model architecture...')
-model = CoattentionNet(q2i_len, num_classes).float()
-
-print('Loading the model checkpoint...')
-print(f'Model path: {PATH}')
-print(f'Current working directory: {os.getcwd()}')
-print(f'Model file exists: {os.path.exists(PATH)}')
-
-try:
-    if not os.path.exists(PATH):
-        raise FileNotFoundError(f"Model checkpoint not found at {PATH}. "
-                              f"This should have been downloaded during Docker build from Azure Blob Storage.")
-    
-    file_size = os.path.getsize(PATH)
-    print(f'Model file size: {file_size / (1024**2):.2f} MB')
-    
-    if file_size < 500000000:  # Less than 500MB
-        raise ValueError(f"Model file is too small ({file_size} bytes). "
-                       f"This likely means the download from Azure Blob Storage failed. "
-                       f"The file may be a Git LFS pointer or corrupted. "
-                       f"Check Docker build logs for download errors.")
-    
-    print('Loading model state dictionary...')
-    model.load_state_dict(torch.load(PATH, map_location='cpu'))
-    print('✓ Model weights loaded successfully!')
-    
-except FileNotFoundError as e:
-    print(f'✗ ERROR: {e}')
-    raise
-except Exception as e:
-    print(f'✗ ERROR loading model: {e}')
-    print(f'Error type: {type(e).__name__}')
-    raise
-
 # Set up DEVICE
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 print(f'Using device: {DEVICE}')
 
-model.eval()
+# Global model variable - will be loaded lazily on first use
+_model = None
+_model_loaded = False
+
+def _load_model():
+    """Lazy load the model on first use"""
+    global _model, _model_loaded
+    
+    if _model_loaded:
+        return _model
+    
+    print('Initializing VQA model architecture...')
+    _model = CoattentionNet(q2i_len, num_classes).float()
+    
+    print('Loading the model checkpoint...')
+    print(f'Model path: {PATH}')
+    print(f'Current working directory: {os.getcwd()}')
+    print(f'Model file exists: {os.path.exists(PATH)}')
+    
+    try:
+        if not os.path.exists(PATH):
+            raise FileNotFoundError(f"Model checkpoint not found at {PATH}. "
+                                  f"This should have been downloaded during Docker build from Azure Blob Storage.")
+        
+        file_size = os.path.getsize(PATH)
+        print(f'Model file size: {file_size / (1024**2):.2f} MB')
+        
+        if file_size < 500000000:  # Less than 500MB
+            raise ValueError(f"Model file is too small ({file_size} bytes). "
+                           f"This likely means the download from Azure Blob Storage failed. "
+                           f"The file may be a Git LFS pointer or corrupted. "
+                           f"Check Docker build logs for download errors.")
+        
+        print('Loading model state dictionary...')
+        _model.load_state_dict(torch.load(PATH, map_location='cpu'))
+        print('✓ Model weights loaded successfully!')
+        
+    except FileNotFoundError as e:
+        print(f'✗ ERROR: {e}')
+        raise
+    except Exception as e:
+        print(f'✗ ERROR loading model: {e}')
+        print(f'Error type: {type(e).__name__}')
+        raise
+    
+    _model.eval()
+    _model_loaded = True
+    return _model
+
+def get_model():
+    """Get the model, loading it lazily on first access"""
+    return _load_model()
 #print('model W_b is', model.W_b)
 #print('model W_w is ', model.W_w.weight)
 #print('model parameters are ',list(model.parameters()))
@@ -529,12 +546,12 @@ def transform_question_two(question):
 
 # predict
 
-def get_prediction(image_tensor,question_tensor):
+def get_prediction(image_tensor, question_tensor):
     print('inside get_prediction')
-    #images = image_tensor.reshape(-1, 28*28)
     torch.set_printoptions(profile="full")
-    #print('image tensor is ', image_tensor)
-    predicted_answer = model(image_tensor,question_tensor)
+    
+    model = get_model()  # Lazy load model on first prediction
+    predicted_answer = model(image_tensor, question_tensor)
     print('predicted answer using torchmax is ', torch.argmax(predicted_answer).item())
     print('predicted answer size is ', predicted_answer.size())
     #print('real prediction is ', predicted_answer[0][0].item())
