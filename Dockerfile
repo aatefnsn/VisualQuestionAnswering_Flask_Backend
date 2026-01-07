@@ -26,6 +26,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 
 # Download model checkpoint from Azure using the script
-RUN chmod +x download_model.sh && ./download_model.sh "$AZURE_SAS_TOKEN"
+RUN chmod +x download_model.sh && AZURE_SAS_TOKEN="$AZURE_SAS_TOKEN" ./download_model.sh
 
 CMD exec gunicorn --bind :$PORT --workers 1 --threads 8 --timeout 0 main:app
