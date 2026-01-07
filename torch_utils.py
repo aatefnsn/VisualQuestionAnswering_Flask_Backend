@@ -359,19 +359,15 @@ PATH = "app/checkpoint_17_Ahmed_768_new.pth.tar"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 print(f'Using device: {DEVICE}')
 
-# Global model variable - will be loaded lazily on first use
-_model = None
-_model_loaded = False
-
-def _load_model():
-    """Lazy load the model on first use"""
-    global _model, _model_loaded
-    
-    if _model_loaded:
-        return _model
+# Load model at startup (not lazy)
+def _load_model_at_startup():
+    """Load the model at container startup"""
+    print('=' * 60)
+    print('INITIALIZING VQA MODEL AT STARTUP')
+    print('=' * 60)
     
     print('Initializing VQA model architecture...')
-    _model = CoattentionNet(q2i_len, num_classes).float()
+    model = CoattentionNet(q2i_len, num_classes).float()
     
     print('Loading the model checkpoint...')
     print(f'Model path: {PATH}')
@@ -380,34 +376,43 @@ def _load_model():
     try:
         if not os.path.exists(PATH):
             raise FileNotFoundError(f"Model checkpoint not found at {PATH}. "
-                                  f"It should have been downloaded during Docker build.")
+                                  f"It should have been in the container from Docker build.")
         
         file_size = os.path.getsize(PATH)
-        print(f'Model file size: {file_size / (1024**2):.2f} MB')
+        file_size_mb = file_size / (1024**2)
+        print(f'Model file size: {file_size_mb:.2f} MB')
         
         if file_size < 500000000:  # Less than 500MB
             raise ValueError(f"Model file is too small ({file_size} bytes). "
-                           f"The download from Azure Blob Storage likely failed during Docker build.")
+                           f"Download from Azure Blob Storage during Docker build may have failed.")
         
         print('Loading model state dictionary...')
-        _model.load_state_dict(torch.load(PATH, map_location='cpu'))
+        model.load_state_dict(torch.load(PATH, map_location='cpu'))
         print('✓ Model weights loaded successfully!')
         
+        model.eval()
+        print('✓ Model set to evaluation mode')
+        print('=' * 60)
+        print('VQA MODEL READY FOR INFERENCE')
+        print('=' * 60)
+        
+        return model
+        
     except FileNotFoundError as e:
-        print(f'✗ ERROR: {e}')
+        print(f'✗ FATAL ERROR: {e}')
         raise
     except Exception as e:
-        print(f'✗ ERROR loading model: {e}')
+        print(f'✗ FATAL ERROR loading model: {e}')
         print(f'Error type: {type(e).__name__}')
         raise
-    
-    _model.eval()
-    _model_loaded = True
-    return _model
+
+# Load model at module import time
+print('\nLoading VQA model from torch_utils.py...')
+_model = _load_model_at_startup()
 
 def get_model():
-    """Get the model, loading it lazily on first access"""
-    return _load_model()
+    """Get the pre-loaded model (loaded at startup)"""
+    return _model
 #print('model W_b is', model.W_b)
 #print('model W_w is ', model.W_w.weight)
 #print('model parameters are ',list(model.parameters()))
