@@ -5,6 +5,8 @@
 #FROM python:3.8.3-slim
 FROM python:3.10-slim
 
+ARG AZURE_SAS_TOKEN
+
 ENV PYTHONUNBUFFERED True
 ENV PORT 8080
 ENV TRANSFORMERS_CACHE /mnt/bertcache
@@ -23,6 +25,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Download the trained model checkpoint from Azure Blob Storage during build
 # Note: We remove any local copy first (which may be a Git LFS pointer from GitHub Actions)
 # and download a fresh copy from Azure Blob Storage to ensure integrity
+# The AZURE_SAS_TOKEN is a build argument containing the SAS token for authentication
 RUN mkdir -p app && \
     rm -f app/checkpoint_17_Ahmed_768_new.pth.tar && \
     apt-get update && apt-get install -y --no-install-recommends curl && \
@@ -33,7 +36,7 @@ RUN mkdir -p app && \
     echo "URL: $MODEL_URL" && \
     curl -v -L --max-time 600 --retry 5 --retry-delay 10 \
     -o app/checkpoint_17_Ahmed_768_new.pth.tar \
-    "$MODEL_URL" || (echo "Curl failed with exit code: $?"; exit 1) && \
+    "${MODEL_URL}?${AZURE_SAS_TOKEN}" && \
     echo "Checking downloaded file..." && \
     if [ ! -f app/checkpoint_17_Ahmed_768_new.pth.tar ]; then \
         echo "ERROR: Model file not found after download"; \
