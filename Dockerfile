@@ -52,7 +52,6 @@ RUN mkdir -p app && \
         exit 1; \
     fi && \
     echo "✓ Model checkpoint downloaded successfully!" && \
-    echo "========================================" && \
-    apt-get remove -y curl && apt-get autoremove -y
+    echo "========================================"
 
 CMD exec gunicorn --bind :$PORT --workers 1 --threads 8 --timeout 0 main:app
