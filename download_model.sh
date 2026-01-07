@@ -5,10 +5,10 @@ echo "========================================="
 echo "Downloading model checkpoint from Azure"
 echo "========================================="
 
-AZURE_SAS_TOKEN="${1:-}"
 if [ -z "$AZURE_SAS_TOKEN" ]; then
-    echo "ERROR: AZURE_SAS_TOKEN not provided"
-    exit 1
+    echo "WARNING: AZURE_SAS_TOKEN not set. Skipping model download."
+    echo "Model will be downloaded on first use."
+    exit 0
 fi
 
 MODEL_URL="https://vqastorage6305.blob.core.windows.net/models/checkpoint_17_Ahmed_768_new.pth.tar"
