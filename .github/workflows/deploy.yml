@@ -70,7 +70,7 @@ jobs:
         echo "=== Build Command Debug ==="
         echo "SAS_TOKEN length: ${#SAS_TOKEN}"
         echo "Testing with minimal Dockerfile..."
-        az acr build --registry vqaregistry --image vqa-backend:test-minimal --platform linux/amd64 --file Dockerfile.test --build-arg AZURE_SAS_TOKEN="$SAS_TOKEN" .
+        az acr build --registry vqaregistry --image vqa-backend:test-minimal --platform linux/amd64 --file Dockerfile.test --build-arg AZURE_SAS_TOKEN="$SAS_TOKEN"
     
     - name: Store previous version
       id: store-previous
