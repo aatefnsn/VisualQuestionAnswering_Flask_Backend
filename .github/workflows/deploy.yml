@@ -67,7 +67,13 @@ jobs:
       env:
         SAS_TOKEN: ${{ secrets.AZURE_SAS_TOKEN }}
       run: |
-        az acr build --registry vqaregistry --image vqa-backend:${{ steps.get-version.outputs.version }} --platform linux/amd64 --file Dockerfile --build-arg AZURE_SAS_TOKEN="$SAS_TOKEN" "$PWD"
+        echo "=== Build Command Debug ==="
+        echo "SAS_TOKEN length: ${#SAS_TOKEN}"
+        echo "SAS_TOKEN first 20 chars: ${SAS_TOKEN:0:20}"
+        echo "Full command:"
+        echo 'az acr build --registry vqaregistry --image vqa-backend:${{ steps.get-version.outputs.version }} --platform linux/amd64 --file Dockerfile --build-arg AZURE_SAS_TOKEN="$SAS_TOKEN" .'
+        echo "=== Executing ==="
+        az acr build --registry vqaregistry --image vqa-backend:${{ steps.get-version.outputs.version }} --platform linux/amd64 --file Dockerfile --build-arg AZURE_SAS_TOKEN="$SAS_TOKEN" .
     
     - name: Store previous version
       id: store-previous
