@@ -86,8 +86,8 @@ jobs:
         echo "Storage Account: ${STORAGE_ACCOUNT}"
         echo "Container: ${CONTAINER_NAME}"
         echo "Blob Name: ${MODEL_BLOB}"
-        SAS_URL="https://${STORAGE_ACCOUNT}.blob.core.windows.net/${CONTAINER_NAME}/${MODEL_BLOB}${SAS_TOKEN}"
-        echo "URL Pattern: https://[account].blob.core.windows.net/[container]/[blob][token]"
+        SAS_URL="https://${STORAGE_ACCOUNT}.blob.core.windows.net/${CONTAINER_NAME}/${MODEL_BLOB}?${SAS_TOKEN}"
+        echo "URL Pattern: https://[account].blob.core.windows.net/[container]/[blob]?[token]"
         
         curl -f --max-time 3600 "$SAS_URL" -o checkpoint_17_Ahmed_768_new.pth.tar
         
