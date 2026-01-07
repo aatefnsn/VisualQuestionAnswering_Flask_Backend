@@ -1,0 +1,9 @@
+FROM python:3.10-slim
+
+ARG AZURE_SAS_TOKEN
+
+RUN echo "Build started"
+RUN echo "AZURE_SAS_TOKEN received"
+RUN echo "Build complete"
+
+CMD ["echo", "Hello from container"]
