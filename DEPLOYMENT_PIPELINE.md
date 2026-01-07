@@ -1,5 +1,7 @@
 # VQA Backend Deployment Pipeline
 
+**Last Updated:** January 6, 2026
+
 ## Overview
 
 This deployment pipeline includes comprehensive testing, health checks, and automatic rollback capabilities to ensure reliable deployments to Azure Container Apps.
