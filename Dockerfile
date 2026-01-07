@@ -21,10 +21,13 @@ RUN pip install -U flask-cors
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Download the trained model checkpoint from Azure Blob Storage during build
+# Note: We remove any local copy first (which may be a Git LFS pointer from GitHub Actions)
+# and download a fresh copy from Azure Blob Storage to ensure integrity
 RUN mkdir -p app && \
+    rm -f app/checkpoint_17_Ahmed_768_new.pth.tar && \
     apt-get update && apt-get install -y --no-install-recommends curl && \
     echo "========================================" && \
-    echo "Downloading model checkpoint..." && \
+    echo "Downloading model checkpoint from Azure..." && \
     echo "========================================" && \
     MODEL_URL="https://vqastorage6305.blob.core.windows.net/models/checkpoint_17_Ahmed_768_new.pth.tar" && \
     curl -f -L --max-time 600 --retry 3 --retry-delay 5 \

@@ -349,15 +349,14 @@ class CoattentionNet(nn.Module):
 
 q2i_len = 15196
 num_classes = 1000
-print('Just before CoattentionNet')
-model = CoattentionNet(q2i_len, num_classes).float()
-print('Just after CoattentionNet')
 import os
 
 #PATH = "./untitled/checkpoint_25_Ahmed.pth.tar"
 PATH = "app/checkpoint_17_Ahmed_768_new.pth.tar"
 #PATH = "app/checkpoint_26_Ahmed_768_new_XLMBERTa.pth.tar"
-#PATH = "https://drive.google.com/file/d/1-g04V9ntMu2g5r3N_U0RaJSmlmbdeRcw/view?usp=share_link"
+
+print('Initializing VQA model architecture...')
+model = CoattentionNet(q2i_len, num_classes).float()
 
 print('Loading the model checkpoint...')
 print(f'Model path: {PATH}')
@@ -366,34 +365,34 @@ print(f'Model file exists: {os.path.exists(PATH)}')
 
 try:
     if not os.path.exists(PATH):
-        raise FileNotFoundError(f"Model checkpoint not found at {PATH}")
+        raise FileNotFoundError(f"Model checkpoint not found at {PATH}. "
+                              f"This should have been downloaded during Docker build from Azure Blob Storage.")
     
     file_size = os.path.getsize(PATH)
     print(f'Model file size: {file_size / (1024**2):.2f} MB')
     
     if file_size < 500000000:  # Less than 500MB
-        raise ValueError(f"Model file is too small ({file_size} bytes). Download may have been incomplete.")
+        raise ValueError(f"Model file is too small ({file_size} bytes). "
+                       f"This likely means the download from Azure Blob Storage failed. "
+                       f"The file may be a Git LFS pointer or corrupted. "
+                       f"Check Docker build logs for download errors.")
     
+    print('Loading model state dictionary...')
     model.load_state_dict(torch.load(PATH, map_location='cpu'))
-    print('✓ Model loaded successfully!')
+    print('✓ Model weights loaded successfully!')
     
 except FileNotFoundError as e:
     print(f'✗ ERROR: {e}')
-    print('Please ensure the checkpoint file is in the app/ directory')
     raise
 except Exception as e:
     print(f'✗ ERROR loading model: {e}')
     print(f'Error type: {type(e).__name__}')
     raise
 
-
-#print('done reloding')
- # Use the GPU if it's available.
+# Set up DEVICE
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-if DEVICE == "cuda":
-    #print('Device is cuda')
-    self._model = self._model.cuda()
-#model.load_state_dict(torch.load(PATH, map_location='cpu'))
+print(f'Using device: {DEVICE}')
+
 model.eval()
 #print('model W_b is', model.W_b)
 #print('model W_w is ', model.W_w.weight)
