@@ -66,6 +66,15 @@ jobs:
           exit 1
         fi
     
+    - name: Verify secrets are configured
+      run: |
+        echo "Checking GitHub secrets..."
+        if [ -z "${{ secrets.AZURE_STORAGE_ACCOUNT }}" ]; then echo "❌ AZURE_STORAGE_ACCOUNT not set"; exit 1; fi
+        if [ -z "${{ secrets.AZURE_CONTAINER_NAME }}" ]; then echo "❌ AZURE_CONTAINER_NAME not set"; exit 1; fi
+        if [ -z "${{ secrets.MODEL_BLOB_NAME }}" ]; then echo "❌ MODEL_BLOB_NAME not set"; exit 1; fi
+        if [ -z "${{ secrets.AZURE_SAS_TOKEN }}" ]; then echo "❌ AZURE_SAS_TOKEN not set"; exit 1; fi
+        echo "✓ All secrets are configured"
+    
     - name: Download model from Azure Blob Storage
       env:
         SAS_TOKEN: ${{ secrets.AZURE_SAS_TOKEN }}
@@ -74,7 +83,11 @@ jobs:
         MODEL_BLOB: ${{ secrets.MODEL_BLOB_NAME }}
       run: |
         echo "Downloading model from Azure Blob Storage..."
+        echo "Storage Account: ${STORAGE_ACCOUNT}"
+        echo "Container: ${CONTAINER_NAME}"
+        echo "Blob Name: ${MODEL_BLOB}"
         SAS_URL="https://${STORAGE_ACCOUNT}.blob.core.windows.net/${CONTAINER_NAME}/${MODEL_BLOB}${SAS_TOKEN}"
+        echo "URL Pattern: https://[account].blob.core.windows.net/[container]/[blob][token]"
         
         curl -f --max-time 3600 "$SAS_URL" -o checkpoint_17_Ahmed_768_new.pth.tar
         
