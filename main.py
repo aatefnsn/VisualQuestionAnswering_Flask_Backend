@@ -10,6 +10,21 @@ from flask_limiter.util import get_remote_address
 app = Flask(__name__)
 CORS(app)
 
+# Initialize model on startup with detailed logging
+print("=" * 60)
+print("VQA Backend Initialization")
+print("=" * 60)
+try:
+    from torch_utils import get_model
+    print("Loading VQA model...")
+    model = get_model()
+    print("✓ Model loaded successfully!")
+except Exception as e:
+    print(f"✗ FATAL: Failed to load model during startup: {e}")
+    import traceback
+    traceback.print_exc()
+print("=" * 60)
+
 # Rate limiting: 100 requests per day per IP address
 limiter = Limiter(
     app=app,
@@ -101,8 +116,12 @@ def predict():
                     'class_name-999': str(objects[0][prediction[0][999].item()])
             }
             return jsonify(data)
-        except:
-            return jsonify({'error': 'error during prediction'})
+        except Exception as e:
+            import traceback
+            error_trace = traceback.format_exc()
+            print(f'ERROR during prediction: {str(e)}')
+            print(error_trace)
+            return jsonify({'error': 'error during prediction', 'details': str(e), 'trace': error_trace}), 500
 
 if __name__ == "__main__":
     #port = os.environ.get("PORT", 5000)
