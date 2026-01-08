@@ -352,7 +352,8 @@ num_classes = 1000
 import os
 
 #PATH = "./untitled/checkpoint_25_Ahmed.pth.tar"
-PATH = "app/checkpoint_17_Ahmed_768_new.pth.tar"
+#PATH = "app/checkpoint_17_Ahmed_768_new.pth.tar"
+PATH = "checkpoint_17_Ahmed_768_new.pth.tar"
 #PATH = "app/checkpoint_26_Ahmed_768_new_XLMBERTa.pth.tar"
 
 # Set up DEVICE
