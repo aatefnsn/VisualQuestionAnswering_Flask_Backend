@@ -106,10 +106,24 @@ jobs:
         fi
         
         echo "✓ Model downloaded successfully"
+        
+        # Ensure file is in build context for ACR
+        ls -lh checkpoint_17_Ahmed_768_new.pth.tar
     
     - name: Build image in ACR
       run: |
         echo "Building Docker image in Azure Container Registry..."
+        echo "Verifying model file exists before build..."
+        if [ -f checkpoint_17_Ahmed_768_new.pth.tar ]; then
+          ls -lh checkpoint_17_Ahmed_768_new.pth.tar
+          echo "✓ Model file found in build context"
+        else
+          echo "❌ ERROR: Model file NOT found in build context!"
+          echo "Current directory contents:"
+          ls -lh | grep -i checkpoint || true
+          exit 1
+        fi
+        
         az acr build \
           --registry vqaregistry \
           --image vqa-backend:${{ steps.get-version.outputs.version }} \
