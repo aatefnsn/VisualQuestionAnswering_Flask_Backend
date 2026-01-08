@@ -206,6 +206,23 @@ jobs:
         echo "✗ Health check failed!"
         echo "health_check_status=failed" >> $GITHUB_OUTPUT
         exit 1
+    
+    - name: Get container logs for debugging
+      if: failure()
+      run: |
+        echo "Retrieving container logs..."
+        az containerapp logs show \
+          --name ${{ env.AZURE_CONTAINER_APP }} \
+          --resource-group ${{ env.AZURE_RG }} \
+          --tail 100 || echo "Could not retrieve logs"
+        
+        echo ""
+        echo "Checking container app status..."
+        az containerapp show \
+          --name ${{ env.AZURE_CONTAINER_APP }} \
+          --resource-group ${{ env.AZURE_RG }} \
+          --query "{status: properties.runningStatus, provisioning: properties.provisioningState}" \
+          -o json || echo "Could not retrieve status"
 
   unit-tests:
     needs: [build-and-registry, deploy]
