@@ -620,25 +620,29 @@ def get_prediction(image_tensor, question_tensor):
     torch.set_printoptions(profile="full")
     
     model = get_model()
-    predicted_answer = model(image_tensor, question_tensor)
+    logits = model(image_tensor, question_tensor)
     
-    print(f'Predicted answer shape: {predicted_answer.size()}')
-    print(f'Top prediction class (argmax): {torch.argmax(predicted_answer).item()}')
+    print(f'Model output (logits) shape: {logits.size()}')
+    print(f'Top prediction class (argmax): {torch.argmax(logits).item()}')
+    
+    # Convert raw logits to probabilities using softmax
+    probabilities = torch.nn.functional.softmax(logits, dim=1)
+    print(f'Probabilities shape: {probabilities.size()}')
     
     # Sort predictions by probability (descending - highest confidence first)
-    prob_list, predicted_list = torch.sort(predicted_answer, 1, descending=True)
+    prob_list, predicted_list = torch.sort(probabilities, 1, descending=True)
     
     # Build result with both probabilities and class indices properly mapped
     result = []
     for i in range(len(prob_list[0])):
         class_idx = predicted_list[0][i].item()  # Get class index
-        probability = prob_list[0][i].item()     # Get corresponding probability
+        probability = prob_list[0][i].item()     # Get corresponding probability (now 0-1 range)
         
         result.append({
             'class_id': class_idx,
             'class_name': f'class_name-{class_idx}',
             'probability': probability,
-            'confidence': f'{probability:.6f}'
+            'confidence': f'{probability * 100:.2f}%'  # Convert to percentage for display
         })
     
     # Print top 10 predictions
