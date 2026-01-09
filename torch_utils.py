@@ -549,50 +549,101 @@ def transform_question_two(question):
 
 # predict
 
+# ================== OLD FUNCTION (COMMENTED OUT) ==================
+# def get_prediction(image_tensor, question_tensor):
+#     print('inside get_prediction')
+#     torch.set_printoptions(profile="full")
+#     
+#     model = get_model()  # Lazy load model on first prediction
+#     predicted_answer = model(image_tensor, question_tensor)
+#     print('predicted answer using torchmax is ', torch.argmax(predicted_answer).item())
+#     print('predicted answer size is ', predicted_answer.size())
+#     #print('real prediction is ', predicted_answer[0][0].item())
+#     #print('real prediction is ', predicted_answer[0][1].item())
+#     total=0
+#     biggest =0
+#     index=0
+#     for i in range(1000):
+#         total = total + predicted_answer[0][i].item()
+#         if predicted_answer[0][i].item() > biggest :
+#             biggest=predicted_answer[0][i].item()
+#             index=i
+#     print ('total is ', total)
+#     print ('biggest is ', biggest)
+#     print('index is ', index)
+#
+#         # max returns (value ,index)
+#     prob, predicted = torch.max(predicted_answer, 1)
+#     print('top answer probability is ', prob.item())
+#     print('predicted class is ', predicted.item())
+#     prob_list, predicted_list = torch.sort(predicted_answer, 1, descending=True)
+#     print('top first predictions list is ', prob_list[0][0].item(), ' and class is ', predicted_list[0][0].item())
+#     print('top second predictions list is ', prob_list[0][1])
+#     print('top third predictions list is ', prob_list[0][2])
+#     print('top fourth predictions list is ', prob_list[0][3])
+#     print('top fifth predictions list is ', prob_list[0][4])
+#     print('top sixth predictions list is ', prob_list[0][5])
+#     print('top seventh predictions list is ', prob_list[0][6])
+#     print('top eighth predictions list is ', prob_list[0][7])
+#     print('top ninth predictions list is ', prob_list[0][8])
+#     print('top tenth predictions list is ', prob_list[0][9])
+#     #print('predicted type is ', predicted.type())
+#     #print('prediction list type is ', predicted_list.type())
+#
+#     #print('prediction list is ', predicted_list)
+#     #top_three = tf.gather(predicted_list, [0, 1, 2])
+#     #print('top 3 predictions list is ', predicted_list[0][0])
+#     #print('top 3 predictions list is ', predicted_list[0][1])
+#     #print('top 3 predictions list is ', predicted_list[0][2])
+#     #print('done with prediction')
+#     return predicted_list
+# =====================================================================
+
 def get_prediction(image_tensor, question_tensor):
-    print('inside get_prediction')
+    """
+    Enhanced prediction function that returns both class indices and probabilities
+    sorted by confidence (highest probability first).
+    
+    Returns:
+        list: List of dicts with structure:
+        [
+            {
+                'class_id': int,
+                'class_name': str (e.g., 'class_name-0'),
+                'probability': float,
+                'confidence': str (formatted percentage)
+            },
+            ...
+        ]
+    """
+    print('inside get_prediction (enhanced)')
     torch.set_printoptions(profile="full")
     
-    model = get_model()  # Lazy load model on first prediction
+    model = get_model()
     predicted_answer = model(image_tensor, question_tensor)
-    print('predicted answer using torchmax is ', torch.argmax(predicted_answer).item())
-    print('predicted answer size is ', predicted_answer.size())
-    #print('real prediction is ', predicted_answer[0][0].item())
-    #print('real prediction is ', predicted_answer[0][1].item())
-    total=0
-    biggest =0
-    index=0
-    for i in range(1000):
-        total = total + predicted_answer[0][i].item()
-        if predicted_answer[0][i].item() > biggest :
-            biggest=predicted_answer[0][i].item()
-            index=i
-    print ('total is ', total)
-    print ('biggest is ', biggest)
-    print('index is ', index)
-
-        # max returns (value ,index)
-    prob, predicted = torch.max(predicted_answer, 1)
-    print('top answer probability is ', prob.item())
-    print('predicted class is ', predicted.item())
+    
+    print(f'Predicted answer shape: {predicted_answer.size()}')
+    print(f'Top prediction class (argmax): {torch.argmax(predicted_answer).item()}')
+    
+    # Sort predictions by probability (descending - highest confidence first)
     prob_list, predicted_list = torch.sort(predicted_answer, 1, descending=True)
-    print('top first predictions list is ', prob_list[0][0].item(), ' and class is ', predicted_list[0][0].item())
-    print('top second predictions list is ', prob_list[0][1])
-    print('top third predictions list is ', prob_list[0][2])
-    print('top fourth predictions list is ', prob_list[0][3])
-    print('top fifth predictions list is ', prob_list[0][4])
-    print('top sixth predictions list is ', prob_list[0][5])
-    print('top seventh predictions list is ', prob_list[0][6])
-    print('top eighth predictions list is ', prob_list[0][7])
-    print('top ninth predictions list is ', prob_list[0][8])
-    print('top tenth predictions list is ', prob_list[0][9])
-    #print('predicted type is ', predicted.type())
-    #print('prediction list type is ', predicted_list.type())
-
-    #print('prediction list is ', predicted_list)
-    #top_three = tf.gather(predicted_list, [0, 1, 2])
-    #print('top 3 predictions list is ', predicted_list[0][0])
-    #print('top 3 predictions list is ', predicted_list[0][1])
-    #print('top 3 predictions list is ', predicted_list[0][2])
-    #print('done with prediction')
-    return predicted_list
+    
+    # Build result with both probabilities and class indices properly mapped
+    result = []
+    for i in range(len(prob_list[0])):
+        class_idx = predicted_list[0][i].item()  # Get class index
+        probability = prob_list[0][i].item()     # Get corresponding probability
+        
+        result.append({
+            'class_id': class_idx,
+            'class_name': f'class_name-{class_idx}',
+            'probability': probability,
+            'confidence': f'{probability:.6f}'
+        })
+    
+    # Print top 10 predictions
+    print('Top 10 predictions (sorted by confidence):')
+    for i, pred in enumerate(result[:10]):
+        print(f"  {i+1}. {pred['class_name']} - probability: {pred['confidence']}")
+    
+    return result
