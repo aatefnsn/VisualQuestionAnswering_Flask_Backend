@@ -44,8 +44,65 @@ class VQAPredictionTest(unittest.TestCase):
         cls.container_available = False
         raise Exception(f"Container not available at {CONTAINER_URL}")
     
+    # =====================================================================
+    # OLD TEST FUNCTION (COMMENTED OUT FOR REFERENCE)
+    # =====================================================================
+    # def test_predict_with_image_and_question(self):
+    #     """Test VQA prediction with image and question - expects new response format with probabilities"""
+    #     if not self.container_available:
+    #         self.skipTest("Container not available")
+    #     
+    #     if not TEST_IMAGE_PATH.exists():
+    #         self.skipTest(f"Test image not found at {TEST_IMAGE_PATH}")
+    #     
+    #     # Send prediction request
+    #     with open(TEST_IMAGE_PATH, 'rb') as f:
+    #         response = requests.post(
+    #             f'{CONTAINER_URL}/predict',
+    #             files={'file': ('test.jpg', f, 'image/jpeg')},
+    #             data={'question': 'what color is the bus?'},
+    #             timeout=120
+    #         )
+    #     
+    #     # Verify response status
+    #     self.assertEqual(response.status_code, 200, f"Expected 200, got {response.status_code}: {response.text}")
+    #     
+    #     # Verify response has expected structure
+    #     data = response.json()
+    #     self.assertNotIn('error', data, f"Response contained error: {data}")
+    #     
+    #     # Verify new response format with predicted_answers array
+    #     self.assertIn('predicted_answers', data, f"Response missing 'predicted_answers' key. Got keys: {list(data.keys())}")
+    #     self.assertIn('status', data, f"Response missing 'status' key. Got keys: {list(data.keys())}")
+    #     
+    #     # Verify predicted_answers is a list with predictions
+    #     predicted_answers = data['predicted_answers']
+    #     self.assertIsInstance(predicted_answers, list, f"predicted_answers should be a list, got {type(predicted_answers)}")
+    #     self.assertGreater(len(predicted_answers), 0, "predicted_answers list is empty")
+    #     
+    #     # Verify each prediction has required fields
+    #     first_prediction = predicted_answers[0]
+    #     required_fields = ['rank', 'class_id', 'class_name', 'probability', 'confidence']
+    #     for field in required_fields:
+    #         self.assertIn(field, first_prediction, f"Prediction missing '{field}' field. Got: {list(first_prediction.keys())}")
+    #     
+    #     # Verify top prediction has valid values
+    #     self.assertEqual(first_prediction['rank'], 1, "Top prediction should have rank 1")
+    #     self.assertIsInstance(first_prediction['class_id'], int, "class_id should be integer")
+    #     self.assertIsInstance(first_prediction['class_name'], str, "class_name should be string")
+    #     self.assertIsInstance(first_prediction['probability'], float, "probability should be float")
+    #     self.assertIsInstance(first_prediction['confidence'], str, "confidence should be string")
+    #     self.assertGreaterEqual(first_prediction['probability'], 0, "probability should be >= 0")
+    #     self.assertLessEqual(first_prediction['probability'], 1, "probability should be <= 1")
+    #     
+    #     print(f"\n✓ Prediction successful!")
+    #     print(f"  Status: {data['status']}")
+    #     print(f"  Total predictions: {len(predicted_answers)}")
+    #     print(f"  Top prediction: {first_prediction['class_name']} (probability: {first_prediction['confidence']})")
+    # =====================================================================
+    
     def test_predict_with_image_and_question(self):
-        """Test VQA prediction with image and question"""
+        """Test VQA prediction with image and question - expects new response format with probabilities"""
         if not self.container_available:
             self.skipTest("Container not available")
         
@@ -64,16 +121,36 @@ class VQAPredictionTest(unittest.TestCase):
         # Verify response status
         self.assertEqual(response.status_code, 200, f"Expected 200, got {response.status_code}: {response.text}")
         
-        # Verify response has predicted answers
+        # Verify response has expected structure
         data = response.json()
         self.assertNotIn('error', data, f"Response contained error: {data}")
         
-        # Verify response contains class predictions (class_name-0, class_name-1, etc.)
-        has_predictions = any(key.startswith('class_name-') for key in data.keys())
-        self.assertTrue(has_predictions, f"Response missing class predictions. Got keys: {list(data.keys())}")
+        # Verify new response format with predicted_answers array
+        self.assertIn('predicted_answers', data, f"Response missing 'predicted_answers' key. Got keys: {list(data.keys())}")
+        self.assertIn('status', data, f"Response missing 'status' key. Got keys: {list(data.keys())}")
+        
+        # Verify predicted_answers is a list with predictions
+        predicted_answers = data['predicted_answers']
+        self.assertIsInstance(predicted_answers, list, f"predicted_answers should be a list, got {type(predicted_answers)}")
+        self.assertGreater(len(predicted_answers), 0, "predicted_answers list is empty")
+        
+        # Verify each prediction has required fields
+        first_prediction = predicted_answers[0]
+        required_fields = ['rank', 'class_id', 'class_name', 'probability', 'confidence']
+        for field in required_fields:
+            self.assertIn(field, first_prediction, f"Prediction missing '{field}' field. Got: {list(first_prediction.keys())}")
+        
+        # Verify top prediction has valid values
+        self.assertEqual(first_prediction['rank'], 1, "Top prediction should have rank 1")
+        self.assertIsInstance(first_prediction['class_id'], int, "class_id should be integer")
+        self.assertIsInstance(first_prediction['class_name'], str, "class_name should be string")
+        self.assertIsInstance(first_prediction['probability'], float, "probability should be float")
+        self.assertIsInstance(first_prediction['confidence'], str, "confidence should be string")
         
         print(f"\n✓ Prediction successful!")
-        print(f"  Predicted answers: {list(data.keys())[:3]}...")
+        print(f"  Status: {data['status']}")
+        print(f"  Total predictions: {len(predicted_answers)}")
+        print(f"  Top prediction: {first_prediction['class_name']} (probability: {first_prediction['confidence']})")
 
 
 def run_tests():
