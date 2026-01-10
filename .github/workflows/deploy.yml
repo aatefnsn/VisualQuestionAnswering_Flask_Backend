@@ -77,7 +77,9 @@ jobs:
         if [ -z "${{ secrets.AZURE_CONTAINER_NAME }}" ]; then echo "❌ AZURE_CONTAINER_NAME not set"; exit 1; fi
         if [ -z "${{ secrets.MODEL_BLOB_NAME }}" ]; then echo "❌ MODEL_BLOB_NAME not set"; exit 1; fi
         if [ -z "${{ secrets.AZURE_SAS_TOKEN }}" ]; then echo "❌ AZURE_SAS_TOKEN not set"; exit 1; fi
-        echo "✓ All secrets are configured"
+        if [ -z "${{ secrets.EVENT_HUB_CONNECTION_STRING }}" ]; then echo "❌ EVENT_HUB_CONNECTION_STRING not set"; exit 1; fi
+        if [ -z "${{ secrets.EVENT_HUB_NAME }}" ]; then echo "❌ EVENT_HUB_NAME not set"; exit 1; fi
+        echo "✓ All secrets are configured (including Event Hub)"
     
     - name: Download model from Azure Blob Storage
       env:
@@ -129,9 +131,11 @@ jobs:
           --image vqa-backend:${{ steps.get-version.outputs.version }} \
           --platform linux/amd64 \
           --file Dockerfile \
+          --secret EVENT_HUB_CONNECTION_STRING="${{ secrets.EVENT_HUB_CONNECTION_STRING }}" \
+          --secret EVENT_HUB_NAME="${{ secrets.EVENT_HUB_NAME }}" \
           ./
         
-        echo "✓ Image built successfully: ${{ steps.get-version.outputs.version }}"
+        echo "✓ Image built successfully with Event Hub secrets injected: ${{ steps.get-version.outputs.version }}"
     
     - name: Store previous version
       id: store-previous
@@ -163,9 +167,13 @@ jobs:
         az containerapp update \
           --name ${{ env.AZURE_CONTAINER_APP }} \
           --resource-group ${{ env.AZURE_RG }} \
-          --image ${{ env.AZURE_REGISTRY }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ needs.build-and-registry.outputs.version }}
+          --image ${{ env.AZURE_REGISTRY }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ needs.build-and-registry.outputs.version }} \
+          --set-env-vars \
+            EVENT_HUB_CONNECTION_STRING="${{ secrets.EVENT_HUB_CONNECTION_STRING }}" \
+            EVENT_HUB_NAME="${{ secrets.EVENT_HUB_NAME }}"
         
         echo "✓ Deployment completed"
+        echo "✓ Event Hub secrets injected at runtime via Container Apps"
     
     - name: Get Container App URL
       id: get-url
