@@ -6,9 +6,69 @@ from PIL import Image
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+import os
+import json
+from datetime import datetime
+from azure.eventhub import EventHubProducerClient, EventData
 
 app = Flask(__name__)
 CORS(app)
+
+# Event Hub configuration
+EVENT_HUB_CONNECTION_STRING = os.getenv('EVENT_HUB_CONNECTION_STRING')
+EVENT_HUB_NAME = os.getenv('EVENT_HUB_NAME', 'vqa-predictions')
+
+# Question type keywords
+QUESTION_TYPE_KEYWORDS = {
+    'color': ['color', 'what color', 'colored', 'colour'],
+    'object': ['what', 'what is', 'what are', 'object', 'objects'],
+    'count': ['how many', 'count', 'number of'],
+    'location': ['where', 'left', 'right', 'behind', 'front', 'position', 'located'],
+    'action': ['is', 'are', 'doing', 'wearing', 'holding', 'action'],
+    'yes_no': ['is there', 'are there', 'do', 'does', 'can', 'will']
+}
+
+def categorize_question(question):
+    """Categorize question by type based on keywords"""
+    q_lower = question.lower()
+    
+    # Check each category
+    for category, keywords in QUESTION_TYPE_KEYWORDS.items():
+        for keyword in keywords:
+            if keyword in q_lower:
+                return category
+    
+    return 'other'
+
+def log_prediction_to_event_hub(question, question_type, top_answer, top_probability, model_version='v1'):
+    """Log prediction to Azure Event Hub for real-time dashboard"""
+    try:
+        if not EVENT_HUB_CONNECTION_STRING:
+            print("⚠️ Event Hub connection string not configured, skipping logging")
+            return
+        
+        producer = EventHubProducerClient.from_connection_string(
+            conn_str=EVENT_HUB_CONNECTION_STRING,
+            eventhub_name=EVENT_HUB_NAME
+        )
+        
+        event_data = {
+            'timestamp': datetime.utcnow().isoformat(),
+            'question': question,
+            'question_type': question_type,
+            'top_answer': str(top_answer),
+            'top_probability': float(top_probability),
+            'model_version': model_version,
+            'user_session_id': request.remote_addr
+        }
+        
+        producer.send_batch([EventData(json.dumps(event_data))])
+        producer.close()
+        print(f"✓ Logged to Event Hub: {question_type} → {top_answer} ({top_probability*100:.1f}%)")
+        
+    except Exception as e:
+        print(f"⚠️ Event Hub logging failed (non-critical): {e}")
+        # Don't fail prediction if logging fails
 
 # Initialize model on startup with detailed logging
 print("=" * 60)
@@ -127,6 +187,21 @@ def predict():
                     'probability': pred['probability'],
                     'confidence': pred['confidence']
                 })
+            
+            # Get top prediction
+            top_pred = predicted_answers[0]
+            top_answer = top_pred['class_name']
+            top_probability = top_pred['probability']
+            
+            # Categorize question and log to Event Hub
+            question_type = categorize_question(qu)
+            log_prediction_to_event_hub(
+                question=qu,
+                question_type=question_type,
+                top_answer=top_answer,
+                top_probability=top_probability,
+                model_version='v1'
+            )
             
             print(f'✓ Returning {len(predicted_answers)} predictions')
             response = {
