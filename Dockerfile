@@ -5,10 +5,6 @@
 #FROM python:3.8.3-slim
 FROM python:3.10-slim
 
-# Accept build arguments (not stored in final image, just used during build)
-ARG EVENT_HUB_CONNECTION_STRING
-ARG EVENT_HUB_NAME
-
 ENV PYTHONUNBUFFERED True
 ENV PORT 8080
 ENV TRANSFORMERS_CACHE /mnt/bertcache
