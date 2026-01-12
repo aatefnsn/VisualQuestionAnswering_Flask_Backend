@@ -131,11 +131,9 @@ jobs:
           --image vqa-backend:${{ steps.get-version.outputs.version }} \
           --platform linux/amd64 \
           --file Dockerfile \
-          --build-arg EVENT_HUB_CONNECTION_STRING="${{ secrets.EVENT_HUB_CONNECTION_STRING }}" \
-          --build-arg EVENT_HUB_NAME="${{ secrets.EVENT_HUB_NAME }}" \
           ./
         
-        echo "✓ Image built successfully with Event Hub secrets injected: ${{ steps.get-version.outputs.version }}"
+        echo "✓ Image built successfully: ${{ steps.get-version.outputs.version }}"
     
     - name: Store previous version
       id: store-previous
