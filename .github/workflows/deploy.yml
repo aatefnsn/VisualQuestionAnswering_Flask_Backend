@@ -131,8 +131,8 @@ jobs:
           --image vqa-backend:${{ steps.get-version.outputs.version }} \
           --platform linux/amd64 \
           --file Dockerfile \
-          --secret EVENT_HUB_CONNECTION_STRING="${{ secrets.EVENT_HUB_CONNECTION_STRING }}" \
-          --secret EVENT_HUB_NAME="${{ secrets.EVENT_HUB_NAME }}" \
+          --build-arg EVENT_HUB_CONNECTION_STRING="${{ secrets.EVENT_HUB_CONNECTION_STRING }}" \
+          --build-arg EVENT_HUB_NAME="${{ secrets.EVENT_HUB_NAME }}" \
           ./
         
         echo "✓ Image built successfully with Event Hub secrets injected: ${{ steps.get-version.outputs.version }}"
