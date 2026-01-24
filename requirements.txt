@@ -36,3 +36,6 @@ typing_extensions==4.3.0
 urllib3==1.26.10
 Werkzeug==2.1.2
 zipp==3.8.0
+
+# Vector DB - Azure Cosmos DB for MongoDB (used for vector search endpoint)
+pymongo[srv]>=4.6.0
