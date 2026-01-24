@@ -1,4 +1,9 @@
 test/
+
+# Databricks files with secrets (keep local only)
+databricks_etl_pipeline_working.py
+databricks_kpi_dashboard_working.py
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
